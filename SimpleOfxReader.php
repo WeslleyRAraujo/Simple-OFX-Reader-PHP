@@ -29,19 +29,19 @@ class SimpleOfxReader
 
     private function ofxFormatted() 
     {
-        $originalOfx = $this->ofxContent;
-        $ofxLines = explode("\n", $originalOfx);
-        foreach ($ofxLines as $key => $lineContent) {
+        $ofxLines = array_map(function($lineContent) {
+            $lineContent = preg_replace("/(\r\n|\r|\n)/", '', $lineContent);
             if(empty(trim($lineContent))) {
-                unset($ofxLines[$key]);
-                continue;
+                return null;
             }
             $elementName = preg_replace("/[^A-Za-z0-9]/", '' , reset(explode('>', $lineContent)));
-            $hasClosedTag = strpos($originalOfx, "</{$elementName}>") !== false;
+            $hasClosedTag = strpos($this->ofxContent, "</{$elementName}>") !== false;
             if(!$hasClosedTag) {
-                $ofxLines[$key] = "{$lineContent}</{$elementName}>";
+               return "{$lineContent}</{$elementName}>";
             }
-        }
+            return $lineContent;
+        }, explode("\n", substr($this->ofxContent, strpos($this->ofxContent, '<OFX>'))));
+
         $this->XMLOfxRaw        = new SimpleXMLElement(implode('', $ofxLines));
         $this->transactionList  = $this->XMLOfxRaw->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKTRANLIST->STMTTRN;
         $this->dateStart        = $this->XMLOfxRaw->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKTRANLIST->DTSTART;
@@ -49,6 +49,7 @@ class SimpleOfxReader
         $this->org              = $this->XMLOfxRaw->SIGNONMSGSRSV1->SONRS->FI->ORG;
         $this->accountId        = $this->XMLOfxRaw->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKACCTFROM->ACCTID;
         $this->bankId           = $this->XMLOfxRaw->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKACCTFROM->BANKID;
+
         return $this;
     }
 }
